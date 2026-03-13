@@ -47,5 +47,5 @@ echo ">> t_multiply: $t_mult_avg ms"
 echo ">> t_writing: $t_write_avg ms"
 echo ">> t_total: $t_total_avg ms"
 
-echo "[$LABEL] $(date '+%Y-%m-%d %H:%M') | runs=$RUNS | read=$t_read_avg | mult=$t_mult_avg | write=$t_write_avg | total=$t_total_avg" >> "$LOGFILE"
+echo "[$LABEL] $(date '+%Y-%m-%d %H:%M') | runs=$RUNS | read=$t_read_avg | mult=$t_mult_avg | write=$t_write_avg | total=$t_total_avg ms" >> "$LOGFILE"
 echo "Logged to $LOGFILE"

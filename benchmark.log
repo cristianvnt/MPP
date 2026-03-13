@@ -21,3 +21,10 @@
 [seq-1000-bin-aliasing_unroll] 2026-03-13 08:43 | runs=10 | read=9.4915300 | mult=191.9650400 | write=2.3675100 | total=203.8242600
 [seq-1000-bin-aliasing_unroll] 2026-03-13 08:44 | runs=10 | read=9.6653600 | mult=190.4449900 | write=2.3412000 | total=202.4517400
 [seq-1000-bin-aliasing] 2026-03-13 08:46 | runs=10 | read=9.5307200 | mult=169.4946200 | write=2.3926400 | total=181.4182200
+[seq-1000-bin-SIMD] 2026-03-13 09:13 | runs=10 | read=9.4128200 | mult=215.1803900 | write=2.3500600 | total=226.9434700
+[seq-1000-bin-restrict] 2026-03-13 09:15 | runs=10 | read=9.5199000 | mult=167.8925800 | write=2.4807200 | total=179.8934000
+[final-1000-txt] 2026-03-13 09:20 | runs=10 | read=437.1247800 | mult=165.3794200 | write=475.0937600 | total=1077.5981500 ms
+[final-1000-bin] 2026-03-13 09:20 | runs=10 | read=9.3857200 | mult=169.3964800 | write=2.3631200 | total=181.1455800 ms
+[final-1000-txt] 2026-03-13 09:21 | runs=10 | read=440.4726900 | mult=167.3482600 | write=477.2043300 | total=1085.0254800 ms
+[final-1000-bin] 2026-03-13 09:21 | runs=10 | read=9.5723700 | mult=171.7513000 | write=2.3328600 | total=183.6567000 ms
+[final-1000-bin] 2026-03-13 09:21 | runs=10 | read=9.3939600 | mult=169.5064900 | write=2.3687600 | total=181.2694100 ms
