@@ -8,7 +8,7 @@ int main(int argc, char** argv)
 {
     if (argc < 6)
     {
-        std::cerr << "Use: " << argv[0] << " <M> <FileA> <FileB> <FileC> <text | binary>\n";
+        std::cerr << "Use: " << argv[0] << " <M> <FileA> <FileB> <FileC> <text | binary> [block size]\n";
         return 1;
     }
 
@@ -17,6 +17,7 @@ int main(int argc, char** argv)
     std::string fileB = argv[3];
     std::string fileC = argv[4];
     bool binary = (std::strcmp(argv[5], "binary") == 0);
+    size_t block = (argc > 6) ? std::stoul(argv[6]) : 48;
 
     Timer timer;
     Timer totalTimer;
@@ -28,7 +29,7 @@ int main(int argc, char** argv)
     double t_reading = timer.stop();
 
     timer.start();
-    Matrix C = Multiply(A, B, M);
+    Matrix C = Multiply(A, B, M, block);
     double t_multiply = timer.stop();
 
     timer.start();
@@ -40,7 +41,9 @@ int main(int argc, char** argv)
 
     double t_total = totalTimer.stop();
     
-    std::cout << std::fixed << std::setprecision(7);
-    std::cout << "t_reading: " << t_reading << "s\n" << "t_multiply: " << t_multiply << "s\n"
-        << "t_writing: " << t_writing << "s\n" << "t_total: " << t_total << "s\n";
+    std::cout << std::fixed << std::setprecision(4);
+    std::cout << "t_reading: " << t_reading * 1000 << " ms\n"
+        << "t_multiply: " << t_multiply * 1000 << " ms\n"
+        << "t_writing: " << t_writing * 1000 << " ms\n"
+        << "t_total: " << t_total * 1000 << " ms\n";
 }

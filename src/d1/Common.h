@@ -55,16 +55,30 @@ void WriteMatrixBinary(std::string const& filename, Matrix const& matrix, size_t
     outf.write(reinterpret_cast<char const*>(matrix.data()), M * M * sizeof(double));
 }
 
-Matrix Multiply(Matrix const& A, Matrix const& B, size_t M)
+Matrix Multiply(Matrix const& A, Matrix const& B, size_t M, size_t block = 48)
 {
     Matrix C(M * M, 0.0);
-    for (size_t i = 0; i < M; ++i)
-        for (size_t k = 0; k < M; ++k)
-        {
-            double A_ik = A[i * M + k];
-            for (size_t j = 0; j < M; ++j)
-                C[i * M + j] += A_ik * B[k * M + j];
-        }
+
+    double const* __restrict__ a = A.data();
+    double const* __restrict__ b = B.data();
+    double* __restrict__ c = C.data();
+
+    for (size_t i0 = 0; i0 < M; i0 += block)
+        for (size_t k0 = 0; k0 < M; k0 += block)
+            for (size_t j0 = 0; j0 < M; j0 += block)
+            {
+                size_t iMax = std::min(i0 + block, M);
+                size_t kMax = std::min(k0 + block, M);
+                size_t jMax = std::min(j0 + block, M);
+
+                for (size_t i = i0; i < iMax; ++i)
+                    for (size_t k = k0; k < kMax; ++k)
+                    {
+                        double a_ik = a[i * M + k];
+                        for (size_t j = j0; j < jMax; ++j)
+                            c[i * M + j] += a_ik * b[k * M + j];
+                    }
+            }
     
     return C;
 }

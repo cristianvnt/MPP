@@ -18,9 +18,6 @@ build*/
 cmake-build-*/
 out/
 
-# parsed files
-*.log
-
 # CMake generated files
 CMakeCache.txt
 CMakeFiles/
