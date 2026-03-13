@@ -30,3 +30,5 @@
 [final-1000-bin] 2026-03-13 09:21 | runs=10 | read=9.3939600 | mult=169.5064900 | write=2.3687600 | total=181.2694100 ms
 [laptop-txt] 2026-03-13 09:39 | runs=10 | read=224.2056800 | mult=122.4386000 | write=213.3711000 | total=560.0155600 ms
 [laptop-bin] 2026-03-13 09:39 | runs=10 | read=8.7075300 | mult=122.9127400 | write=7.0075200 | total=138.6281500 ms
+[laptop-bin] 2026-03-13 09:42 | runs=10 | read=8.1537800 | mult=121.0235800 | write=6.6931500 | total=135.8707400 ms
+[laptop-txt] 2026-03-13 09:42 | runs=10 | read=222.0793300 | mult=121.8940700 | write=213.6888500 | total=557.6624700 ms
