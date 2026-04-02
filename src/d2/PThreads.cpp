@@ -137,10 +137,13 @@ int main(int argc, char** argv)
     timer.start();
     Matrix A(M * M);
     Matrix B(M * M);
-    if (parallelRead) {
+    if (parallelRead)
+    {
         ReadMatrixBinaryParallel(fileA, A, M, numThreads);
         ReadMatrixBinaryParallel(fileB, B, M, numThreads);
-    } else {
+    }
+    else
+    {
         A = ReadMatrixBinary(fileA, M);
         B = ReadMatrixBinary(fileB, M);
     }

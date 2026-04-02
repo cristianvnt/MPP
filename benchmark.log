@@ -40,3 +40,7 @@
 [pthreads-2b-20t] 2026-04-02 09:24 | runs=10 | read=9.9098100 | mult=63.4046600 | write=2.4989000 | total=75.8135600 ms
 [pthreads-2a-40t] 2026-04-02 09:24 | runs=10 | read=17.6829300 | mult=57.3472600 | write=2.4121900 | total=77.4425800 ms
 [pthreads-2b-40t] 2026-04-02 09:24 | runs=10 | read=10.2668400 | mult=60.7278000 | write=2.5450700 | total=73.5398800 ms
+[openmp-3a-20t] 2026-04-02 09:35 | runs=10 | read=17.6135800 | mult=49.6221200 | write=2.4657500 | total=69.7016200 ms
+[openmp-3b-20t] 2026-04-02 09:35 | runs=10 | read=9.9452200 | mult=62.9826800 | write=2.4754400 | total=75.4035500 ms
+[openmp-3a-40t] 2026-04-02 09:35 | runs=10 | read=17.7243700 | mult=50.4752800 | write=2.4396800 | total=70.6395700 ms
+[openmp-3b-40t] 2026-04-02 09:35 | runs=10 | read=10.5880600 | mult=62.0711700 | write=2.5522000 | total=75.2116000 ms
