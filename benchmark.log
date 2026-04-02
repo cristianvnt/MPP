@@ -32,3 +32,11 @@
 [laptop-bin] 2026-03-13 09:39 | runs=10 | read=8.7075300 | mult=122.9127400 | write=7.0075200 | total=138.6281500 ms
 [laptop-bin] 2026-03-13 09:42 | runs=10 | read=8.1537800 | mult=121.0235800 | write=6.6931500 | total=135.8707400 ms
 [laptop-txt] 2026-03-13 09:42 | runs=10 | read=222.0793300 | mult=121.8940700 | write=213.6888500 | total=557.6624700 ms
+[pthreads-1000-20t] 2026-04-02 09:07 | runs=10 | read=9.8187600 | mult=60.7887400 | write=2.4160800 | total=73.0238100 ms
+[pthreads-1000-40t] 2026-04-02 09:08 | runs=10 | read=11.0472700 | mult=78.3360600 | write=2.7737200 | total=92.1572900 ms
+[pthreads-1000-4t] 2026-04-02 09:09 | runs=10 | read=10.0848600 | mult=51.2704300 | write=3.6321900 | total=64.9877200 ms
+[pthreads-1000-8t] 2026-04-02 09:09 | runs=10 | read=9.3547900 | mult=62.9211200 | write=2.5113200 | total=74.7875600 ms
+[pthreads-2a-20t] 2026-04-02 09:24 | runs=10 | read=17.8449700 | mult=58.8337000 | write=2.4857300 | total=79.1646000 ms
+[pthreads-2b-20t] 2026-04-02 09:24 | runs=10 | read=9.9098100 | mult=63.4046600 | write=2.4989000 | total=75.8135600 ms
+[pthreads-2a-40t] 2026-04-02 09:24 | runs=10 | read=17.6829300 | mult=57.3472600 | write=2.4121900 | total=77.4425800 ms
+[pthreads-2b-40t] 2026-04-02 09:24 | runs=10 | read=10.2668400 | mult=60.7278000 | write=2.5450700 | total=73.5398800 ms
