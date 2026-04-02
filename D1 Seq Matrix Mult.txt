@@ -1,0 +1,95 @@
+D1 - Seq Matrix Mult
+
+
+>>> Design Specification <<<
+
+Matrices are stored as a flat std::vector<double> in row-major order. Elements are accessed with i * M + j, keeping everything in a single contiguous memory block. This avoids the overhead of a vector-of-vectors (which scatters rows across the heap) and makes binary I/O possible in a single read/write call since the whole matrix is one continuous chunk.
+
+For binary files, each element takes exactly 8 bytes (sizeof(double)), so the byte offset of any element can be computed directly as (i * M + j) * 8. This property is what will allow parallel reading in future variants, where each thread can seek to its assigned portion without scanning from the start.
+
+Each phase (reading, multiplication, writing) is timed separately using std::chrono::high_resolution_clock. Every configuration is run 10 times and the results are averaged to reduce noise from background processes. The matrix generator uses std::mt19937 with a fixed seed so the exact same matrices are produced every time, making results reproducible across runs(file A - seed 67, file B - seed 100).
+
+
+>>> Theoretical Performance Analysis <<<
+
+Reading and writing are both O(M^2) since we process M^2 elements sequentially. Text mode is slower per element because of string-to-double conversion overhead, while binary mode is essentially a bulk memory copy.
+
+Multiplication is O(M^3). For each of the M^2 elements in the result matrix C, we compute a dot product of length M, which means M multiplications and M-1 additions.
+
+For M = 1000, reading/writing deals with about 10^6 elements while multiplication performs roughly 10^9 operations. The multiply completely dominates runtime, which the empirical results confirm: with binary I/O, the multiply accounts for about 95% of total execution time.
+
+
+>>> Implementation Specification <<<
+
+Compiler flags (-O3, -march=native, -ffast-math):
+
+-O3 enables auto-vectorization, loop unrolling, and aggressive inlining. -march=native lets the compiler use instructions specific to the target CPU, like AVX2 and SSE4.2. -ffast-math allows reordering of floating-point operations, which opens up further vectorization opportunities. Just these flags alone cut the multiply time from 714ms down to 364ms.
+
+ikj loop order instead of ijk:
+
+The naive ijk loop has k incrementing in the innermost loop. This means B is accessed as B[k * M + j] where k changes every step, which jumps M elements (thousands of bytes) per iteration. That is column-wise access, and it causes a cache miss on nearly every step. The CPU fetches a cache line of 8 doubles each time but only uses 1 before jumping away.
+
+Reordering to ikj makes j the inner loop variable. Now B[k * M + j] and C[i * M + j] both increment along rows, which is sequential memory access. The CPU loads a cache line and we use all 8 values before moving to the next. A[i * M + k] does not change inside the inner loop, so it gets pulled into a local variable that stays in a CPU register.
+
+The complexity is still O(M^3), but the cache behavior is drastically better.
+
+
+Cache blocking with block size 48:
+
+Even with good access patterns, the full matrices do not fit in cache. For M = 1000, each matrix occupies about 8MB, while L1d cache is only 32KB and L2 is 256KB. As the computation walks through the data, earlier parts get pushed out of cache before they can be reused.
+
+Blocking addresses this by dividing the matrices into small tiles. Instead of processing full rows, the outer loops select a 48x48 block to work on, and the inner loops perform the multiply within that tile only. Three sub-blocks of 48x48 doubles each take about 55KB, totaling around 165KB. This fits comfortably in L2 cache.
+
+I tested multiple block sizes to find the best one for my CPU:
+  Block 32: 235ms (fits in L1 but has more loop transitions between blocks)
+  Block 40: 191ms
+  Block 48: 177ms (best result)
+  Block 56: 186ms
+  Block 64: 241ms (starts putting pressure on L2)
+  Block 128: 240ms (overflows L2 entirely, performance drops to near-unblocked levels)
+
+The optimal block size depends on the specific CPU's cache hierarchy, so it will need to be retuned when running on the cluster.
+
+
+__restrict__ pointer hints:
+
+By extracting raw pointers from the vectors and marking them with __restrict__, we promise the compiler that A, B, and C do not overlap in memory. Without this hint, the compiler has to assume that writing to C could potentially modify values in A or B (pointer aliasing), which prevents it from generating more aggressive vectorized code. With the aliasing concern removed, auto-vectorization kicks in more effectively. This gave a small but consistent improvement from 177ms to 167ms, about 6%.
+
+
+Optimizations that did not help:
+
+Transpose B: The idea was to transpose B before multiplying, so both A and B_transposed would be accessed row-wise in the inner loop. However, since ikj order already gives cache-friendly access to B, the transpose added nothing. It just introduced an unnecessary O(M^2) allocation and copy. No change in multiply time (364ms with or without), so I removed it.
+
+Manual loop unrolling (4x): Processing 4 elements of j per iteration to reduce loop overhead and expose more instruction-level parallelism. The multiply actually got worse, going from 167ms to 192ms. Reverted.
+
+Explicit AVX2 SIMD intrinsics: Using _mm256_fmadd_pd to manually process 4 doubles per instruction instead of relying on auto-vectorization. Also degraded performance, from 167ms to 215ms. Reverted.
+
+The lesson from these attempts is that with -O3, -march=native, and -ffast-math enabled, the compiler already does a solid job at the low level. The optimizations that actually helped were algorithmic (loop reordering, cache blocking) and high-level hints (restrict), not manual microoptimization.
+
+
+>>> Testing <<<
+
+All benchmarks use M = 1000, 10 runs averaged. Tested on two machines to verify that the optimizations hold across different hardware.
+
+Optimization progression on the desktop (binary files, multiply phase only):
+  No optimization (O2 default):       714 ms
+  Compiler flags (O3 + native):       364 ms
+  Added transpose (no effect):        364 ms
+  Added blocking (48) with transpose: 199 ms
+  Removed transpose, kept blocking:   177 ms
+  Added restrict pointers:            167 ms
+  Tried manual unrolling (reverted):  192 ms
+  Tried SIMD intrinsics (reverted):   215 ms
+
+Total improvement on multiply: from 714ms down to 167ms, a 4.3x speedup.
+
+
+Desktop (4-core, 32KB L1d / 256KB L2 / 8MB L3 per core):
+  1.a (text):   read=437.12  mult=165.38  write=475.09  total=1077.60 ms
+  1.b (binary): read=9.50    mult=167.44  write=2.35    total=179.29 ms
+
+Laptop (8-core, 40KB L1d / 1.4MB L2 / 12MB L3):
+  1.a (text):   read=222.08  mult=121.89  write=213.69  total=557.66 ms
+  1.b (binary): read=8.15    mult=121.02  write=6.69    total=135.87 ms
+
+The laptop's larger L2 cache (1.4MB vs 256KB) gives roughly 28% faster multiply times since the blocking working set fits more comfortably. Block size should be tuned per machine for best results.

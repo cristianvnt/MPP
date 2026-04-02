@@ -1,0 +1,59 @@
+D2 - Parallel Matrix Mult (PThreads + OpenMP)
+
+
+>>> Design Specification <<<
+
+Same foundation as D1 (flat vector, row-major, blocked ikj, restrict pointers, binary I/O).
+
+Parallelization is row-based: each thread computes M/P rows of C. No synchronization needed since threads write to separate regions. For parallel reading, each thread opens the file, seeks to startRow * M * 8, and reads its chunk.
+
+PThreads: manual thread management, data passed via struct. OpenMP: #pragma omp parallel for with schedule(static), compiler handles thread pool.
+
+
+>>> Theoretical Performance Analysis <<<
+
+P = number of threads.
+
+Time complexity:
+  Parallel multiply: O(M^3 / P)
+  Parallel read: O(M^2 / P)
+  Sequential write: O(M^2)
+
+Speed-up: S = T_seq / T_par
+Efficiency: E = S / P
+Cost: C = P * T_par (ideally equals T_seq)
+
+Results (multiply phase, vs sequential 167ms):
+
+  PThreads 20t: S = 167/58.83 = 2.84x, E = 2.84/20 = 0.14, Cost = 20 * 58.83 = 1177ms
+  PThreads 40t: S = 167/57.35 = 2.91x, E = 2.91/40 = 0.07, Cost = 40 * 57.35 = 2294ms
+  OpenMP 20t:   S = 167/49.62 = 3.37x, E = 3.37/20 = 0.17, Cost = 20 * 49.62 = 992ms
+  OpenMP 40t:   S = 167/50.48 = 3.31x, E = 3.31/40 = 0.08, Cost = 40 * 50.48 = 2019ms
+
+Low efficiency and high cost because 20/40 threads on 8 cores means heavy oversubscription. Should improve on the cluster.
+
+
+>>> Implementation Specification <<<
+
+PThreads: ThreadData struct holds pointers to A, B, C, row range, block size. Thread function runs the blocked ikj multiply from startRow to endRow only. Row distribution gives first (M % P) threads one extra row for even splitting.
+
+OpenMP: same blocked multiply with one pragma on the outermost loop. OpenMP reuses its internal thread pool so there is less creation overhead than pthreads, which explains its roughly 15% faster multiply times.
+
+Parallel read: each thread computes its byte offset, opens the file independently, seeks, and reads its chunk into the shared matrix buffer. No gain for M=1000 since the binary read is already around 10ms. Should matter for larger matrices where I/O becomes a bottleneck.
+
+
+>>> Testing <<<
+
+M = 1000, 10 runs averaged, binary files. Desktop (8-core).
+
+PThreads:
+  2.a (seq read, 20t):  read=17.84  mult=58.83  write=2.49  total=79.16 ms
+  2.b (par read, 20t):  read=9.91   mult=63.40  write=2.50  total=75.81 ms
+  2.a (seq read, 40t):  read=17.68  mult=57.35  write=2.41  total=77.44 ms
+  2.b (par read, 40t):  read=10.27  mult=60.73  write=2.55  total=73.54 ms
+
+OpenMP:
+  3.a (seq read, 20t):  read=17.61  mult=49.62  write=2.47  total=69.70 ms
+  3.b (par read, 20t):  read=9.95   mult=62.98  write=2.48  total=75.40 ms
+  3.a (seq read, 40t):  read=17.72  mult=50.48  write=2.44  total=70.64 ms
+  3.b (par read, 40t):  read=10.59  mult=62.07  write=2.55  total=75.21 ms
