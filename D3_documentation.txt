@@ -1,0 +1,86 @@
+D3 - MPI Cannon's Algorithm + MPI Hybrid
+
+
+>>> Design Specification <<<
+
+Cannon's algorithm distributes the matrix multiplication across P processes arranged in a sqrt(P) x sqrt(P) grid.
+Each process is responsible for computing one block of the result matrix C.
+
+For P=25, the grid is 5x5. Each process gets a 200x200 block (M=1000). For P=64, the grid is 8x8, with 125x125 blocks.
+
+The key idea: each process only holds one block of A and one block of B at a time. Through coordinated circular shifts, 
+the right pairs of blocks meet at the right process at the right step. After sqrt(P) steps, every process has accumulated its complete C block.
+
+MPI communicators are used to organize the shifts. A 2D cartesian topology (MPI_Cart_create) represents the process grid with periodic boundaries (wrap-around). 
+Row communicators handle shifting A blocks left, column communicators handle shifting B blocks up.
+MPI_Sendrecv_replace does the actual block exchanges in a single call without deadlocking.
+
+For sequential reading (4.a/5.a), process 0 reads both full matrices, extracts blocks, and sends each block to the corresponding process via MPI_Send/MPI_Recv.
+
+For parallel reading (4.b/5.b), each process opens the file independently and reads its own block row by row,
+seeking to the correct byte offset for each row since block rows are not contiguous in the file.
+
+The hybrid variant (5) adds OpenMP threading to the local block multiplication inside each MPI process.
+Each process spawns 10 threads that split the block rows among themselves using #pragma omp parallel for.
+
+
+>>> Theoretical Performance Analysis <<<
+
+P = number of processes, Q = sqrt(P) (grid dimension), B = M/Q (block size), T = threads per process (hybrid only).
+
+Time complexity:
+  Local block multiply per step: O(B^3) = O(M^3 / Q^3)
+  Total multiply (Q steps): O(Q * B^3) = O(M^3 / Q^2) = O(M^3 / P)
+  Communication per step: O(B^2) = O(M^2 / P) for each shift
+  Total communication: O(Q * M^2 / P) = O(M^2 / sqrt(P))
+  Sequential read + scatter: O(M^2) for reading + O(P * B^2) = O(M^2) for distribution
+  Parallel read: O(B^2) = O(M^2 / P) per process
+  Gather + write: O(M^2)
+
+Hybrid variant divides each local block multiply across T threads:
+  Local multiply per step: O(B^3 / T)
+  Total multiply: O(M^3 / (P * T))
+
+Speed-up: S = T_seq / T_par
+Efficiency: E = S / P (or S / (P*T) for hybrid)
+Cost: C = P * T_par
+
+Communication overhead limits scalability. As P grows, blocks get smaller and communication cost relative to computation increases.
+The ratio computation/communication is O(B) = O(M/Q), so larger M benefits more from adding processes.
+
+
+>>> Implementation Specification <<<
+
+MPI_Cart_create sets up the 2D grid with periodic boundaries in both dimensions. MPI_Cart_sub splits it into row and column sub-communicators.
+The reorder parameter is set to 0 to keep rank assignments consistent.
+
+The algorithm has three phases:
+
+1. Initial skew: MPI_Cart_shift computes source and destination ranks for the shift.
+Row i of A shifts left by i positions, column j of B shifts up by j positions. MPI_Sendrecv_replace performs the exchange in-place.
+
+2. Main loop (Q iterations): each process multiplies its current local A and B blocks using the ikj loop order,
+adds the result to its local C block, then shifts A left by 1 within its row and B up by 1 within its column.
+
+3. Gather: all processes send their C blocks to process 0 via MPI_Send. Process 0 receives each block
+and places it into the correct position in the full result matrix using the sender's grid coordinates.
+
+For the hybrid variant, the only change is adding #pragma omp parallel for num_threads(T) schedule(static) on the outermost loop of the local block multiply. 
+MPI handles inter-process communication, OpenMP handles intra-process parallelism.
+
+Block extraction and placement use the mapping: element (i,j) of block (pi,pj) corresponds to element ((pi*B+i)*M + pj*B+j) in the full matrix.
+
+
+>>> Testing <<<
+
+M = 1000, 10 runs averaged, binary files.
+Local testing verified correctness (cmp against sequential output).
+Cluster benchmarks pending (compute nodes unavailable).
+
+When available, tests will run with:
+  4.a: mpirun -np 25 -hostfile hosts ./cannon 1000 A.bin B.bin C.bin
+  4.b: mpirun -np 25 -hostfile hosts ./cannon 1000 A.bin B.bin C.bin 1
+  5.a: mpirun -np 25 -hostfile hosts ./cannon_hybrid 1000 A.bin B.bin C.bin 10
+  5.b: mpirun -np 25 -hostfile hosts ./cannon_hybrid 1000 A.bin B.bin C.bin 10 1
+
+Same runs repeated with -np 64 (8x8 grid).
